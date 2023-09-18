@@ -1,12 +1,19 @@
+pub mod command;
+pub use command::{Command, CommandType};
+
 
 pub struct Parser {
     lines: Vec<String>,
+    current_line_number: i32,
+    current_command: Command,
 }
 
 impl Parser {
     pub fn new(file_text: &str) -> Parser {
         Parser {
             lines: Parser::get_valid_lines(file_text),
+            current_line_number: -1,
+            current_command: Command::new(""),
         }
     }
 
@@ -28,7 +35,16 @@ impl Parser {
     }
 
     pub fn has_more_lines(&self) -> bool {
-        self.lines.len() > 0
+        self.current_line_number < self.lines.len() as i32 -1
+    }
+
+    pub fn advance(&mut self) {
+        self.current_line_number += 1;
+        self.current_command = Command::new(&self.lines[self.current_line_number as usize]);
+    }
+
+    fn command_type(&self) -> CommandType {
+        self.current_command.command_type()
     }
 }
 
@@ -64,4 +80,34 @@ mod tests {
         assert!(!parser.has_more_lines());
     }
 
+    #[test]
+    fn test_advance() {
+        let mut parser = Parser::new("add");
+        assert!(parser.has_more_lines());
+        parser.advance();
+        assert!(!parser.has_more_lines());
+    }
+
+    #[test]
+    fn test_advance_given_two_lines() {
+        let mut parser = Parser::new("add\nsub");
+        assert!(parser.has_more_lines());
+        parser.advance();
+        assert!(parser.has_more_lines());
+        parser.advance();
+        assert!(!parser.has_more_lines());
+    }
+
+    #[test]
+    fn test_command_type_given_arithmetic_command() {
+        let commands: [&str; 9] = [
+            "add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not"
+        ];
+        for command in commands {
+            let mut parser = Parser::new(command);
+            parser.advance();
+            assert_eq!(parser.command_type(), CommandType::Arithmetic)
+                
+        }
+    }
 }
