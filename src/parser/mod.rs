@@ -43,8 +43,8 @@ impl Parser {
         self.current_command = Command::new(&self.lines[self.current_line_number as usize]);
     }
 
-    fn command_type(&self) -> CommandType {
-        self.current_command.command_type()
+    fn command_type(&self) -> &CommandType {
+        self.current_command.get_command_type()
     }
 }
 
@@ -106,8 +106,7 @@ mod tests {
         for command in commands {
             let mut parser = Parser::new(command);
             parser.advance();
-            assert_eq!(parser.command_type(), CommandType::Arithmetic)
-                
+            assert!(matches!(parser.command_type(), CommandType::Arithmetic))
         }
     }
 }
