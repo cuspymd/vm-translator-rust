@@ -1,0 +1,4 @@
+// To test Main
+push local 0
+push static 0
+add
