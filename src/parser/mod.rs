@@ -46,11 +46,24 @@ impl Parser {
     fn command_type(&self) -> &CommandType {
         self.current_command.get_command_type()
     }
+
+    fn arg1(&self) -> &str {
+        self.current_command.get_arg1()
+    }
+
+    fn arg2(&self) -> i32 {
+        match self.current_command.get_arg2() {
+            Some(arg2) => arg2,
+            None => panic!("Not available")
+        }
+    }
 }
 
 
 #[cfg(test)]
 mod tests {
+    use std::panic;
+
     use super::*;
 
     #[test]
@@ -106,7 +119,46 @@ mod tests {
         for command in commands {
             let mut parser = Parser::new(command);
             parser.advance();
-            assert!(matches!(parser.command_type(), CommandType::Arithmetic))
+            assert!(matches!(parser.command_type(), CommandType::Arithmetic));
         }
+    }
+
+    #[test]
+    fn test_command_type_given_stack_command() {
+        let mut parser = Parser::new("push constant 17\npop local 2");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Push));
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Pop));
+    }
+
+    #[test]
+    fn test_arg_given_arithmetic_command() {
+        let mut parser = Parser::new("add");
+        parser.advance();
+        assert_eq!(parser.arg1(), "add");
+    }
+
+    #[test]
+    fn test_arg_given_push_command() {
+        let mut parser = Parser::new("push constant 1");
+        parser.advance();
+        assert_eq!(parser.arg1(), "constant");
+        assert_eq!(parser.arg2(), 1);
+    }
+
+    #[test]
+    fn test_arg_given_pop_command() {
+        let mut parser = Parser::new("pop temp 12");
+        parser.advance();
+        assert_eq!(parser.arg1(), "temp");
+        assert_eq!(parser.arg2(), 12);
+    }
+
+    #[test]
+    fn test_arg_given_invalid_type() {
+        let mut parser = Parser::new("sub");
+        parser.advance();
+        assert!(panic::catch_unwind(|| { parser.arg2(); }).is_err());
     }
 }
