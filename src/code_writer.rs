@@ -3,10 +3,12 @@ use std::{fs::File, path::Path, io::Write, collections::HashMap};
 
 pub struct CodeWriter {
     file: File,
+    branch_index: u32,
     first_pop: Vec<String>,
     second_pop: Vec<String>,
     final_push: Vec<String>,
     jump_symbol_table: HashMap<String, String>,
+    segment_symbol_table: HashMap<String, String>,
 }
 
 impl CodeWriter {
@@ -15,6 +17,7 @@ impl CodeWriter {
 
         CodeWriter {
             file: File::create(file_path).unwrap(),
+            branch_index: 1,
             first_pop: vec![
                 String::from("@SP"),
                 String::from("M=M-1"),
@@ -37,6 +40,12 @@ impl CodeWriter {
                 (String::from("eq"), String::from("JEQ")),
                 (String::from("gt"), String::from("JGT")),
                 (String::from("lt"), String::from("JLT")),
+            ]),
+            segment_symbol_table: HashMap::from([
+                (String::from("local"), String::from("LCL")),
+                (String::from("argument"), String::from("ARG")),
+                (String::from("this"), String::from("THIS")),
+                (String::from("that"), String::from("THAT")),
             ])
         }
     }
@@ -61,6 +70,18 @@ impl CodeWriter {
             }
             "not" => {
                 statements = self.get_unary_input_asm("not", vec![String::from("D=!D")])   
+            }
+            "eq" => {
+                let command_statements = self.get_comparison_asm("eq");
+                statements = self.get_binary_input_asm("eq", command_statements)
+            }
+            "gt" => {
+                let command_statements = self.get_comparison_asm("gt");
+                statements = self.get_binary_input_asm("gt", command_statements)
+            }
+            "lt" => {
+                let command_statements = self.get_comparison_asm("lt");
+                statements = self.get_binary_input_asm("lt", command_statements)
             }
             _ => {
                 statements = Vec::new()
@@ -106,6 +127,56 @@ impl CodeWriter {
         statements.extend(command_statements);
         statements.extend(self.final_push.clone());
         statements
+    }
+
+    fn get_comparison_asm(&mut self, command: &str) -> Vec<String> {
+        let statements = vec![
+            String::from("D=M-D"),
+            format!("@THEN{}", self.branch_index),
+            format!("D;{}", self.jump_symbol_table[command]),
+            String::from("D=0"),
+            format!("@END{}", self.branch_index),
+            String::from("0;JMP"),
+            format!("(THEN{})", self.branch_index),
+            String::from("D=-1"),
+            format!("(END{})", self.branch_index),
+        ];
+        self.branch_index += 1;
+        statements
+    }
+
+    pub fn write_push_pop(&mut self, command: &str, segment: &str, index: u32) {
+        let mut statements = vec![format!("// {} {} {}", command, segment, index)];
+
+        match (command, segment, index) {
+            ("push", "local" | "argument" | "this" | "that", index) => {
+                statements.push(format!("@{}", self.segment_symbol_table[segment]));
+                statements.push(String::from("D=M"));
+                statements.push(format!("@{}", index));
+                statements.push(String::from("A=D+A"));
+                statements.push(String::from("D=M"));
+                statements.extend(self.final_push.clone());
+            },
+            ("pop", "local" | "argument" | "this" | "that", index) => {
+                statements.push(format!("@{}", self.segment_symbol_table[segment]));
+                statements.push(String::from("D=M"));
+                statements.push(format!("@{}", index));
+                statements.push(String::from("D=D+A"));
+                statements.push(String::from("@R13"));
+                statements.push(String::from("M=D"));
+                statements.push(String::from("@SP"));
+                statements.push(String::from("M=M-1"));
+                statements.push(String::from("A=M"));
+                statements.push(String::from("D=M"));
+                statements.push(String::from("@R13"));
+                statements.push(String::from("A=M"));
+                statements.push(String::from("M=D"));
+            },
+            _ => {
+                
+            }
+        }
+        self.write_statements(statements);
     }
 }
 
@@ -157,6 +228,68 @@ mod tests {
     #[test]
     fn test_write_arithmetic_given_lt() {
         test_write_arithmetic("lt");
+    }
+
+    #[test]
+    fn test_write_arithmetic_given_ltgt() {
+        let out_file = String::from("ltgt.asm");
+        let mut code_writer = CodeWriter::new(&out_file);
+
+        code_writer.write_arithmetic("lt");
+        code_writer.write_arithmetic("gt");
+        verify_output(&out_file);
+        fs::remove_file(&out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_local() {
+        test_write_push_pop("pushlocal2", vec![("push", "local", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_argument() {
+        test_write_push_pop("pushargument2", vec![("push", "argument", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_this() {
+        test_write_push_pop("pushthis2", vec![("push", "this", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_that() {
+        test_write_push_pop("pushthat2", vec![("push", "that", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_local() {
+        test_write_push_pop("poplocal2", vec![("pop", "local", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_argument() {
+        test_write_push_pop("popargument2", vec![("pop", "argument", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_this() {
+        test_write_push_pop("popthis2", vec![("pop", "this", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_that() {
+        test_write_push_pop("popthat2", vec![("pop", "that", 2)]);
+    }
+
+    fn test_write_push_pop(test_name: &str, commands: Vec<(&str, &str, u32)>) {
+        let out_file = format!("{}.asm", test_name);
+        let mut code_writer = CodeWriter::new(&out_file);
+
+        for (command, segment, index) in commands {
+            code_writer.write_push_pop(command, segment, index);
+        }
+        verify_output(&out_file);
+        fs::remove_file(&out_file).unwrap();
     }
 
     fn test_write_arithmetic(test_command: &str) {
