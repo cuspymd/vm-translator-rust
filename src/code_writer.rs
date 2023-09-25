@@ -3,6 +3,7 @@ use std::{fs::File, path::Path, io::Write, collections::HashMap};
 
 pub struct CodeWriter {
     file: File,
+    file_base_name: String,
     branch_index: u32,
     first_pop: Vec<String>,
     second_pop: Vec<String>,
@@ -17,6 +18,7 @@ impl CodeWriter {
 
         CodeWriter {
             file: File::create(file_path).unwrap(),
+            file_base_name: file_path.file_stem().unwrap().to_string_lossy().to_string(),
             branch_index: 1,
             first_pop: vec![
                 String::from("@SP"),
@@ -172,6 +174,62 @@ impl CodeWriter {
                 statements.push(String::from("A=M"));
                 statements.push(String::from("M=D"));
             },
+            ("push", "pointer", 0) => {
+                statements.push(String::from("@THIS"));
+                statements.push(String::from("D=M"));
+                statements.extend(self.final_push.clone());
+            },
+            ("push", "pointer", 1) => {
+                statements.push(String::from("@THAT"));
+                statements.push(String::from("D=M"));
+                statements.extend(self.final_push.clone());
+            },
+            ("pop", "pointer", 0) => {
+                statements.extend(self.first_pop.clone()); 
+                statements.push(String::from("@THIS"));
+                statements.push(String::from("M=D"));
+
+            },
+            ("pop", "pointer", 1) => {
+                statements.extend(self.first_pop.clone()); 
+                statements.push(String::from("@THAT"));
+                statements.push(String::from("M=D"));
+            },
+            ("push", "temp", index) => {
+                statements.push(String::from("@5"));
+                statements.push(String::from("D=A"));
+                statements.push(format!("@{}", index));
+                statements.push(String::from("A=D+A"));
+                statements.push(String::from("D=M"));
+                statements.extend(self.final_push.clone());
+            },
+            ("pop", "temp", index) => {
+                statements.push(String::from("@5"));
+                statements.push(String::from("D=A"));
+                statements.push(format!("@{}", index));
+                statements.push(String::from("D=D+A"));
+                statements.push(String::from("@R13"));
+                statements.push(String::from("M=D"));
+                statements.extend(self.first_pop.clone()); 
+                statements.push(String::from("@R13"));
+                statements.push(String::from("A=M"));
+                statements.push(String::from("M=D"));
+            },
+            ("push", "constant", index) => {
+                statements.push(format!("@{}", index));
+                statements.push(String::from("D=A"));
+                statements.extend(self.final_push.clone());
+            },
+            ("push", "static", index) => {
+                statements.push(format!("@{}.{}", &self.file_base_name, index));
+                statements.push(String::from("D=M"));
+                statements.extend(self.final_push.clone());
+            },
+            ("pop", "static", index) => {
+                statements.extend(self.first_pop.clone());
+                statements.push(format!("@{}.{}", &self.file_base_name, index));
+                statements.push(String::from("M=D"));
+            },
             _ => {
                 
             }
@@ -279,6 +337,47 @@ mod tests {
     #[test]
     fn test_write_push_pop_given_pop_that() {
         test_write_push_pop("popthat2", vec![("pop", "that", 2)]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_pointer() {
+        test_write_push_pop("pushpointer", vec![
+            ("push", "pointer", 0),
+            ("push", "pointer", 1),
+        ]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_pointer() {
+        test_write_push_pop("poppointer", vec![
+            ("pop", "pointer", 0),
+            ("pop", "pointer", 1),
+        ]);
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_temp() {
+        test_write_push_pop("pushtemp2", vec![("push", "temp", 2)])
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_temp() {
+        test_write_push_pop("poptemp2", vec![("pop", "temp", 2)])
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_constant() {
+        test_write_push_pop("pushconstant2", vec![("push", "constant", 2)])
+    }
+
+    #[test]
+    fn test_write_push_pop_given_push_static() {
+        test_write_push_pop("pushstatic2", vec![("push", "static", 2)])
+    }
+
+    #[test]
+    fn test_write_push_pop_given_pop_static() {
+        test_write_push_pop("popstatic2", vec![("pop", "static", 2)])
     }
 
     fn test_write_push_pop(test_name: &str, commands: Vec<(&str, &str, u32)>) {
