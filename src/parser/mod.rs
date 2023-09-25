@@ -43,15 +43,15 @@ impl Parser {
         self.current_command = Command::new(&self.lines[self.current_line_number as usize]);
     }
 
-    fn command_type(&self) -> &CommandType {
+    pub fn command_type(&self) -> &CommandType {
         self.current_command.get_command_type()
     }
 
-    fn arg1(&self) -> &str {
+    pub fn arg1(&self) -> &str {
         self.current_command.get_arg1()
     }
 
-    fn arg2(&self) -> i32 {
+    pub fn arg2(&self) -> i32 {
         match self.current_command.get_arg2() {
             Some(arg2) => arg2,
             None => panic!("Not available")

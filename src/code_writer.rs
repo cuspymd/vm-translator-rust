@@ -147,7 +147,7 @@ impl CodeWriter {
         statements
     }
 
-    pub fn write_push_pop(&mut self, command: &str, segment: &str, index: u32) {
+    pub fn write_push_pop(&mut self, command: &str, segment: &str, index: i32) {
         let mut statements = vec![format!("// {} {} {}", command, segment, index)];
 
         match (command, segment, index) {
@@ -236,11 +236,22 @@ impl CodeWriter {
         }
         self.write_statements(statements);
     }
+
+    pub fn write_end(&mut self) {
+        let end_statements = vec![
+            String::from("(END)"),
+            String::from("@END"),
+            String::from("0;JMP"),
+        ];
+        self.write_statements(end_statements);
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::{self, File}, path::Path, io::Read};
+    use std::{fs, path::Path};
+    use crate::util::load_text;
+
     use super::CodeWriter;
 
     #[test]
@@ -380,7 +391,7 @@ mod tests {
         test_write_push_pop("popstatic2", vec![("pop", "static", 2)])
     }
 
-    fn test_write_push_pop(test_name: &str, commands: Vec<(&str, &str, u32)>) {
+    fn test_write_push_pop(test_name: &str, commands: Vec<(&str, &str, i32)>) {
         let out_file = format!("{}.asm", test_name);
         let mut code_writer = CodeWriter::new(&out_file);
 
@@ -408,13 +419,5 @@ mod tests {
         let solution = load_text(&solution_file);
 
         assert_eq!(out, solution);
-    }
-
-    fn load_text(file_path: &str) -> String {
-        let mut file = File::open(file_path).unwrap();
-        let mut text = String::new();
-
-        file.read_to_string(&mut text).unwrap();
-        text
     }
 }
