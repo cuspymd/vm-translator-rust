@@ -7,7 +7,7 @@ This repository contains a Rust implementation of the VM Translator for the Hack
 
 ## Prerequisites
 
-- Rust is required to build and run this VM Translator. If you don't have Rust installed, you can get it from the [official Rust website](https://www.rust-lang.org/).
+Rust is required to build and run this VM Translator. If you don't have Rust installed, you can get it from the [official Rust website](https://www.rust-lang.org/).
 
 ## Installation
 
