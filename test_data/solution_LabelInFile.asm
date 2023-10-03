@@ -1,0 +1,2 @@
+// label LABEL
+(LabelInFile$LABEL)

@@ -7,14 +7,14 @@
   M=M-1
   A=M
   D=M-D
-  @THEN1
+  @lt_THEN1
   D;JLT
   D=0
-  @END1
+  @lt_END1
   0;JMP
-(THEN1)
+(lt_THEN1)
   D=-1
-(END1)
+(lt_END1)
   @SP
   A=M
   M=D

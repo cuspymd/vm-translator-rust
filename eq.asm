@@ -1,4 +1,4 @@
-// gt
+// eq
   @SP
   M=M-1
   A=M
@@ -7,14 +7,14 @@
   M=M-1
   A=M
   D=M-D
-  @gt_THEN1
-  D;JGT
+  @THEN1
+  D;JEQ
   D=0
-  @gt_END1
+  @END1
   0;JMP
-(gt_THEN1)
+(THEN1)
   D=-1
-(gt_END1)
+(END1)
   @SP
   A=M
   M=D

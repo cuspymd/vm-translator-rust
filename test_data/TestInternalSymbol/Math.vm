@@ -1,0 +1,6 @@
+function Math.add 2
+  push argument 0
+  push argument 1
+  add
+  gt
+  return

@@ -1,0 +1,7 @@
+// To test Main given control commands
+function Control.test 1
+  label LABEL
+  goto LABEL
+  if-goto LABEL
+  call Math.add 2
+  return

@@ -1,0 +1,53 @@
+// function CallInFunction.test 0
+(CallInFunction.test)
+// call Math.add 2
+  @CallInFunction.test$ret.1
+  D=A
+  @SP
+  A=M
+  M=D
+  @SP
+  M=M+1
+  @LCL
+  D=M
+  @SP
+  A=M
+  M=D
+  @SP
+  M=M+1
+  @ARG
+  D=M
+  @SP
+  A=M
+  M=D
+  @SP
+  M=M+1
+  @THIS
+  D=M
+  @SP
+  A=M
+  M=D
+  @SP
+  M=M+1
+  @THAT
+  D=M
+  @SP
+  A=M
+  M=D
+  @SP
+  M=M+1
+  @SP
+  D=M
+  @5
+  D=D-A
+  @2
+  D=D-A
+  @ARG
+  M=D
+  @SP
+  D=M
+  @LCL
+  M=D
+  @Math.add
+  0;JMP
+(CallInFunction.test$ret.1)

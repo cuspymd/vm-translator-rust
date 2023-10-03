@@ -1,0 +1,5 @@
+function Main.main 0
+  push constant 1
+  push constant 1
+  call Math.add 2
+  return
