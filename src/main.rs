@@ -1,5 +1,6 @@
 use std::{path::Path, env};
 
+use clap::{command, Arg, ArgAction};
 use code_writer::CodeWriter;
 use parser::{Parser, CommandType};
 use util::load_text;
@@ -42,17 +43,21 @@ fn translate(input_path_str: &str) {
 }
 
 fn main() {
-    match env::args().nth(1) {
-        Some(input_file) => {
-            println!("Start translating for '{}", input_file);
-            translate(&input_file);
-            println!("Completed");
-        },
-        None => {
-            println!("Usage: vm_translator <input_file>");
-        }
-    }
+    let matches = command!()
+        .arg(Arg::new("input_path")
+             .help("Path of vm file to be translated")
+             .required(true))
+        .arg(Arg::new("no_bootstrap")
+             .long("no-bootstrap")
+             .action(ArgAction::SetTrue)
+             .help("Do not make bootstrap codes"))
+        .get_matches();
 
+    let input_path = matches.get_one::<String>("input_path").unwrap();
+
+    println!("Start translating for '{}", input_path);
+    translate(&input_path);
+    println!("Completed");
 }
 
 #[cfg(test)]
