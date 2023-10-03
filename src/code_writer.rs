@@ -4,6 +4,7 @@ use std::{fs::File, path::Path, io::Write, collections::HashMap};
 pub struct CodeWriter {
     file: File,
     file_base_name: String,
+    current_function_name: String,
     branch_index: u32,
     first_pop: Vec<String>,
     second_pop: Vec<String>,
@@ -19,6 +20,7 @@ impl CodeWriter {
         CodeWriter {
             file: File::create(file_path).unwrap(),
             file_base_name: file_path.file_stem().unwrap().to_string_lossy().to_string(),
+            current_function_name: String::from(""),
             branch_index: 1,
             first_pop: vec![
                 String::from("@SP"),
@@ -134,17 +136,25 @@ impl CodeWriter {
     fn get_comparison_asm(&mut self, command: &str) -> Vec<String> {
         let statements = vec![
             String::from("D=M-D"),
-            format!("@THEN{}", self.branch_index),
+            format!("@{}_THEN{}", self.get_label_prefix(), self.branch_index),
             format!("D;{}", self.jump_symbol_table[command]),
             String::from("D=0"),
-            format!("@END{}", self.branch_index),
+            format!("@{}_END{}", self.get_label_prefix(), self.branch_index),
             String::from("0;JMP"),
-            format!("(THEN{})", self.branch_index),
+            format!("({}_THEN{})", self.get_label_prefix(), self.branch_index),
             String::from("D=-1"),
-            format!("(END{})", self.branch_index),
+            format!("({}_END{})", self.get_label_prefix(), self.branch_index),
         ];
         self.branch_index += 1;
         statements
+    }
+
+    fn get_label_prefix(&self) -> &str {
+        if self.current_function_name.is_empty() {
+            &self.file_base_name
+        } else {
+            &self.current_function_name
+        }
     }
 
     pub fn write_push_pop(&mut self, command: &str, segment: &str, index: i32) {
