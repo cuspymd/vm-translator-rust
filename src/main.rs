@@ -39,7 +39,6 @@ fn translate(input_path_str: &str) {
             }
         }
     }
-    code_writer.write_end();
 }
 
 fn main() {

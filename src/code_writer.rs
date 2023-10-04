@@ -246,15 +246,6 @@ impl CodeWriter {
         }
         self.write_statements(statements);
     }
-
-    pub fn write_end(&mut self) {
-        let end_statements = vec![
-            String::from("(END)"),
-            String::from("@END"),
-            String::from("0;JMP"),
-        ];
-        self.write_statements(end_statements);
-    }
 }
 
 #[cfg(test)]
