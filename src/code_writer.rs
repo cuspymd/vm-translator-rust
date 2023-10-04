@@ -246,6 +246,32 @@ impl CodeWriter {
         }
         self.write_statements(statements);
     }
+
+    pub fn write_function(&mut self, function_name: &str, nvars: u32) {
+        let mut statements = vec![
+            format!("// function {} {}", function_name, nvars),
+            format!("({})", function_name),
+        ];
+        statements.extend(self.get_push_nvars_asm(nvars));
+        self.write_statements(statements);
+    }
+
+    fn get_push_nvars_asm(&self, nvars: u32) -> Vec<String> {
+        let mut statements = Vec::new();
+        let push_statements = vec![
+            String::from("@SP"),
+            String::from("A=M"),
+            String::from("M=0"),
+            String::from("@SP"),
+            String::from("M=M+1"),
+        ];
+
+        for _ in 0..nvars {
+            statements.extend(push_statements.clone());
+        }
+
+        statements
+    }
 }
 
 #[cfg(test)]
@@ -390,6 +416,27 @@ mod tests {
     #[test]
     fn test_write_push_pop_given_pop_static() {
         test_write_push_pop("popstatic2", vec![("pop", "static", 2)])
+    }
+
+    #[test]
+    fn test_write_function_given_no_vars() {
+        test_write_function("function0", vec![("Main.test", 0)])
+    }
+
+    #[test]
+    fn test_write_function_given_2_vars() {
+        test_write_function("function2", vec![("Main.test", 2)])
+    }
+
+    fn test_write_function(test_name: &str, commands: Vec<(&str, u32)>) {
+        let out_file = format!("{}.asm", test_name);
+        let mut code_writer = CodeWriter::new(&out_file);
+
+        for (function_name, nvars) in commands {
+            code_writer.write_function(function_name, nvars);
+        }
+        verify_output(&out_file);
+        fs::remove_file(&out_file).unwrap();
     }
 
     fn test_write_push_pop(test_name: &str, commands: Vec<(&str, &str, i32)>) {
