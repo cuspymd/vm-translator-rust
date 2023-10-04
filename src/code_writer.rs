@@ -253,7 +253,9 @@ impl CodeWriter {
             format!("({})", function_name),
         ];
         statements.extend(self.get_push_nvars_asm(nvars));
+
         self.write_statements(statements);
+        self.current_function_name = function_name.to_string()
     }
 
     fn get_push_nvars_asm(&self, nvars: u32) -> Vec<String> {
@@ -271,6 +273,32 @@ impl CodeWriter {
         }
 
         statements
+    }
+
+    pub fn write_label(&mut self, label: &str) {
+        let statements = vec![
+            format!("// label {}", label),
+            format!("({}${})", self.get_label_prefix(), label),
+        ];
+        self.write_statements(statements);
+    }
+
+    pub fn write_goto(&mut self, label: &str) {
+        let statements = vec![
+            format!("// goto {}", label),
+            format!("@{}${}", self.get_label_prefix(), label),
+            String::from("0;JMP"),
+        ];
+        self.write_statements(statements);
+    }
+
+    pub fn write_if(&mut self, label: &str) {
+        let mut statements = vec![format!("// if {}", label)];
+        statements.extend(self.first_pop.clone());
+        statements.push(format!("@{}${}", self.get_label_prefix(), label));
+        statements.push(String::from("D;JNE"));
+
+        self.write_statements(statements);
     }
 }
 
@@ -426,6 +454,75 @@ mod tests {
     #[test]
     fn test_write_function_given_2_vars() {
         test_write_function("function2", vec![("Main.test", 2)])
+    }
+
+    #[test]
+    fn test_write_label_given_file() {
+        let out_file = "LabelInFile.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_label("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_label_given_function() {
+        let out_file = "LabelInFunction.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_function("LabelInFunction.test", 0);
+        code_writer.write_label("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_goto_given_file() {
+        let out_file = "GotoInFile.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_goto("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_goto_given_function() {
+        let out_file = "GotoInFunction.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_function("GotoInFunction.test", 0);
+        code_writer.write_goto("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_if_given_file() {
+        let out_file = "IfInFile.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_if("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_if_given_function() {
+        let out_file = "IfInFunction.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_function("IfInFunction.test", 0);
+        code_writer.write_if("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
     }
 
     fn test_write_function(test_name: &str, commands: Vec<(&str, u32)>) {
