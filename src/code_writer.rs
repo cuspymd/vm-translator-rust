@@ -6,6 +6,7 @@ pub struct CodeWriter {
     file_base_name: String,
     current_function_name: String,
     branch_index: u32,
+    return_index: u32,
     first_pop: Vec<String>,
     second_pop: Vec<String>,
     final_push: Vec<String>,
@@ -22,6 +23,7 @@ impl CodeWriter {
             file_base_name: file_path.file_stem().unwrap().to_string_lossy().to_string(),
             current_function_name: String::from(""),
             branch_index: 1,
+            return_index: 1,
             first_pop: vec![
                 String::from("@SP"),
                 String::from("M=M-1"),
@@ -300,6 +302,99 @@ impl CodeWriter {
 
         self.write_statements(statements);
     }
+
+    pub fn write_call(&mut self, function_name: &str, nvars: u32) {
+        let return_label = format!("{}$ret.{}", self.get_label_prefix(), self.return_index);
+        let mut statements = vec![
+            format!("// call {} {}", function_name, nvars),
+            format!("@{}", &return_label),
+            String::from("D=A"),
+        ];
+        statements.extend(self.final_push.clone());
+        statements.extend(self.get_push_segment_asm("LCL"));
+        statements.extend(self.get_push_segment_asm("ARG"));
+        statements.extend(self.get_push_segment_asm("THIS"));
+        statements.extend(self.get_push_segment_asm("THAT"));
+        statements.extend(vec![
+            String::from("@SP"),
+            String::from("D=M"),
+            String::from("@5"),
+            String::from("D=D-A"),
+            format!("@{}", nvars),
+            String::from("D=D-A"),
+            String::from("@ARG"),
+            String::from("M=D"),
+            String::from("@SP"),
+            String::from("D=M"),
+            String::from("@LCL"),
+            String::from("M=D"),
+            format!("@{}", function_name),
+            String::from("0;JMP"),
+            format!("({})", return_label),
+        ]);
+        self.write_statements(statements);
+        self.return_index += 1;
+    }
+
+    pub fn write_return(&mut self) {
+        let mut statements = vec![
+            String::from("// return"),
+            String::from("@LCL"),
+            String::from("D=M"),
+            String::from("@R13"),
+            String::from("M=D"),
+            String::from("@5"),
+            String::from("D=D-A"),
+            String::from("A=D"),
+            String::from("D=M"),
+            String::from("@R14"),
+            String::from("M=D"),
+        ];
+        statements.extend(self.first_pop.clone());
+        statements.extend(vec![
+            String::from("@ARG"),
+            String::from("A=M"),
+            String::from("M=D"),
+            String::from("@ARG"),
+            String::from("D=M"),
+            String::from("D=D+1"),
+            String::from("@SP"),
+            String::from("M=D"),
+        ]);
+        statements.extend(self.get_recover_segment_asm("THAT", 1));
+        statements.extend(self.get_recover_segment_asm("THIS", 2));
+        statements.extend(self.get_recover_segment_asm("ARG", 3));
+        statements.extend(self.get_recover_segment_asm("LCL", 4));
+        statements.extend(vec![
+            String::from("@R14"),
+            String::from("A=M"),
+            String::from("0;JMP"),
+        ]);
+
+        self.write_statements(statements);
+    }
+
+    fn get_recover_segment_asm(&self, segment: &str, index: u32) -> Vec<String> {
+        vec![
+            String::from("@R13"),
+            String::from("D=M"),
+            format!("@{}", index),
+            String::from("D=D-A"),
+            String::from("A=D"),
+            String::from("D=M"),
+            format!("@{}", segment),
+            String::from("M=D"),
+        ]
+    }
+
+    fn get_push_segment_asm(&self, segment: &str) -> Vec<String> {
+        let mut statements = vec![
+            format!("@{}", segment),
+            String::from("D=M"),
+        ];
+        statements.extend(self.final_push.clone());
+        statements
+    }
 }
 
 #[cfg(test)]
@@ -520,6 +615,53 @@ mod tests {
 
         code_writer.write_function("IfInFunction.test", 0);
         code_writer.write_if("LABEL");
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_call_given_file() {
+        let out_file = "CallInFile.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_call("Math.add", 2);
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_call_given_function() {
+        let out_file = "CallInFunction.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_function("CallInFunction.test", 0);
+        code_writer.write_call("Math.add", 2);
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_call_given_multi_calls() {
+        let out_file = "CallGivenMultiCalls.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_function("CallGivenMultiCalls.test", 0);
+        code_writer.write_call("Math.add", 2);
+        code_writer.write_call("Math.sum", 0);
+
+        verify_output(out_file);
+        fs::remove_file(out_file).unwrap();
+    }
+
+    #[test]
+    fn test_write_return() {
+        let out_file = "Return.asm";
+        let mut code_writer = CodeWriter::new(out_file);
+
+        code_writer.write_return();
 
         verify_output(out_file);
         fs::remove_file(out_file).unwrap();
