@@ -133,6 +133,48 @@ mod tests {
     }
 
     #[test]
+    fn test_command_type_given_label_command() {
+        let mut parser = Parser::new("label LABEL");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Label));
+    }
+
+    #[test]
+    fn test_command_type_given_goto_command() {
+        let mut parser = Parser::new("goto LABEL");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Goto));
+    }
+
+    #[test]
+    fn test_command_type_given_if_command() {
+        let mut parser = Parser::new("if-goto LABEL");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::If));
+    }
+
+    #[test]
+    fn test_command_type_given_function_command() {
+        let mut parser = Parser::new("function FUNC 0");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Function));
+    }
+
+    #[test]
+    fn test_command_type_given_call_command() {
+        let mut parser = Parser::new("call FUNC 0");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Call));
+    }
+
+    #[test]
+    fn test_command_type_given_return_command() {
+        let mut parser = Parser::new("return");
+        parser.advance();
+        assert!(matches!(parser.command_type(), CommandType::Return));
+    }
+
+    #[test]
     fn test_arg_given_arithmetic_command() {
         let mut parser = Parser::new("add");
         parser.advance();
@@ -160,5 +202,42 @@ mod tests {
         let mut parser = Parser::new("sub");
         parser.advance();
         assert!(panic::catch_unwind(|| { parser.arg2(); }).is_err());
+    }
+
+    #[test]
+    fn test_arg_given_label_command() {
+        let mut parser = Parser::new("label LABEL");
+        parser.advance();
+        assert_eq!(parser.arg1(), "LABEL");
+    }
+
+    #[test]
+    fn test_arg_given_goto_command() {
+        let mut parser = Parser::new("goto LABEL");
+        parser.advance();
+        assert_eq!(parser.arg1(), "LABEL");
+    }
+
+    #[test]
+    fn test_arg_given_if_command() {
+        let mut parser = Parser::new("if-goto LABEL");
+        parser.advance();
+        assert_eq!(parser.arg1(), "LABEL");
+    }
+
+    #[test]
+    fn test_arg_given_function_command() {
+        let mut parser = Parser::new("function FUNC 0");
+        parser.advance();
+        assert_eq!(parser.arg1(), "FUNC");
+        assert_eq!(parser.arg2(), 0);
+    }
+
+    #[test]
+    fn test_arg_given_call_command() {
+        let mut parser = Parser::new("call FUNC 0");
+        parser.advance();
+        assert_eq!(parser.arg1(), "FUNC");
+        assert_eq!(parser.arg2(), 0);
     }
 }
