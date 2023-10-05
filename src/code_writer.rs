@@ -249,7 +249,7 @@ impl CodeWriter {
         self.write_statements(statements);
     }
 
-    pub fn write_function(&mut self, function_name: &str, nvars: u32) {
+    pub fn write_function(&mut self, function_name: &str, nvars: i32) {
         let mut statements = vec![
             format!("// function {} {}", function_name, nvars),
             format!("({})", function_name),
@@ -260,7 +260,7 @@ impl CodeWriter {
         self.current_function_name = function_name.to_string()
     }
 
-    fn get_push_nvars_asm(&self, nvars: u32) -> Vec<String> {
+    fn get_push_nvars_asm(&self, nvars: i32) -> Vec<String> {
         let mut statements = Vec::new();
         let push_statements = vec![
             String::from("@SP"),
@@ -303,7 +303,7 @@ impl CodeWriter {
         self.write_statements(statements);
     }
 
-    pub fn write_call(&mut self, function_name: &str, nvars: u32) {
+    pub fn write_call(&mut self, function_name: &str, nvars: i32) {
         let return_label = format!("{}$ret.{}", self.get_label_prefix(), self.return_index);
         let mut statements = vec![
             format!("// call {} {}", function_name, nvars),
@@ -667,7 +667,7 @@ mod tests {
         fs::remove_file(out_file).unwrap();
     }
 
-    fn test_write_function(test_name: &str, commands: Vec<(&str, u32)>) {
+    fn test_write_function(test_name: &str, commands: Vec<(&str, i32)>) {
         let out_file = format!("{}.asm", test_name);
         let mut code_writer = CodeWriter::new(&out_file);
 
