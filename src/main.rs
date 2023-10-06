@@ -1,7 +1,8 @@
-use std::{path::Path, env};
+use std::{path::{Path, PathBuf}, env, fs::{OpenOptions, self}, io::Write};
 
 use clap::{command, Arg, ArgAction};
 use code_writer::CodeWriter;
+use glob::glob;
 use parser::{Parser, CommandType};
 use util::load_text;
 
@@ -9,23 +10,21 @@ mod parser;
 mod code_writer;
 mod util;
 
-fn translate(input_path_str: &str, need_bootstrap: bool) {
-    let input_path = Path::new(input_path_str);
+fn translate(input_path: &Path, need_bootstrap: bool) {
     if input_path.is_file() {
-        translate_file(input_path_str);
+        translate_file(input_path);
     } else if input_path.is_dir() {
-        
+        translate_folder(input_path, need_bootstrap);
     }
 }
 
-fn translate_file(input_path_str: &str) {
-    let input_path = Path::new(input_path_str);
+fn translate_file(input_path: &Path) -> PathBuf {
     let folder_path = input_path.parent().unwrap();
     let file_base_name = input_path.file_stem().unwrap()
         .to_string_lossy().to_string();
-    let output_path_str = &folder_path.join(format!("{}.asm", &file_base_name))
+    let output_path_str = folder_path.join(format!("{}.asm", &file_base_name))
         .to_string_lossy().to_string();
-    let input_text = load_text(input_path_str);
+    let input_text = load_text(input_path);
 
     let mut parser = Parser::new(&input_text);
     let mut code_writer = CodeWriter::new(&output_path_str);
@@ -63,7 +62,43 @@ fn translate_file(input_path_str: &str) {
             }
         }
     }
+    Path::new(&output_path_str).to_path_buf()
 }
+
+fn translate_folder(input_folder: &Path, need_bootstrap: bool) {
+    let pattern = input_folder.join("*.vm").to_string_lossy().to_string();
+    let vm_files = glob(&pattern).unwrap();
+    let asm_files = vm_files
+        .map(|vm_file| translate_file(vm_file.unwrap().as_path()))
+        .collect::<Vec<PathBuf>>();
+
+    let input_folder_name = input_folder.file_stem().unwrap().to_string_lossy().to_string();
+    let out_file_path = input_folder.join(format!("{}.asm", input_folder_name));
+    let out_file_path_str = out_file_path.to_string_lossy().to_string();
+
+    {
+        let mut code_writer = CodeWriter::new(&out_file_path_str);
+        if need_bootstrap {
+            code_writer.write_bootstrap();
+        }
+    }
+    
+    let mut out_file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(out_file_path)
+        .unwrap();
+
+    for asm_file_path in &asm_files {
+        let asm_file_name = asm_file_path.file_name().unwrap().to_string_lossy().to_string();
+        let asm_text = load_text(asm_file_path);
+        let final_text = format!("// > {}\n{}", asm_file_name, asm_text);
+
+        out_file.write_all(final_text.as_bytes()).unwrap();
+        fs::remove_file(asm_file_path).unwrap();
+    }
+}
+
 
 fn main() {
     let matches = command!()
@@ -76,11 +111,11 @@ fn main() {
              .help("Do not make bootstrap codes"))
         .get_matches();
 
-    let input_path = matches.get_one::<String>("input_path").unwrap();
+    let input_path_str = matches.get_one::<String>("input_path").unwrap();
     let need_bootstrap = !matches.get_flag("no_bootstrap");
 
-    println!("Start translating for '{}", input_path);
-    translate(&input_path, need_bootstrap);
+    println!("Start translating for '{}", input_path_str);
+    translate(Path::new(input_path_str), need_bootstrap);
     println!("Completed");
 }
 
@@ -99,17 +134,22 @@ mod tests {
         test_vm("Control.vm");
     }
 
-    // #[test]
-    // fn test_main_given_folder() {
-    //     test_vm("TestFolder");
-    // }
+    #[test]
+    fn test_main_given_folder() {
+        test_vm("TestFolder");
+    }
+
+    #[test]
+    fn test_main_given_multi_comparison_commands() {
+        test_vm("TestInternalSymbol");
+    }
 
     fn test_vm(test_dest: &str) {
         let test_name = Path::new(test_dest).file_stem().unwrap()
             .to_string_lossy().to_string();
         let is_folder = test_name == test_dest;
 
-        translate(&format!("test_data/{}", test_dest), false);
+        translate(Path::new(&format!("test_data/{}", test_dest)), false);
 
         let out_file_path = match is_folder {
             true => format!("test_data/{}/{}.asm", test_name, test_name),
@@ -121,6 +161,5 @@ mod tests {
 
         assert_eq!(out, solution);
         fs::remove_file(out_file_path).unwrap();
-        
     }
 }

@@ -1,6 +1,6 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, path::Path};
 
-pub fn load_text(file_path: &str) -> String {
+pub fn load_text<P: AsRef<Path>>(file_path: P) -> String {
     let mut file = File::open(file_path).unwrap();
     let mut text = String::new();
 

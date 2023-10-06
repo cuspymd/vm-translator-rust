@@ -374,6 +374,18 @@ impl CodeWriter {
         self.write_statements(statements);
     }
 
+    pub fn write_bootstrap(&mut self) {
+        let statements = vec![
+            String::from("// bootstrap"),
+            String::from("@256"),
+            String::from("D=A"),
+            String::from("@SP"),
+            String::from("M=D"),
+        ];
+        self.write_statements(statements);
+        self.write_call("Sys.init", 0);
+    }
+
     fn get_recover_segment_asm(&self, segment: &str, index: u32) -> Vec<String> {
         vec![
             String::from("@R13"),
